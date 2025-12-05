@@ -152,7 +152,8 @@ if uploaded_file is not None:
                     final_df = final_df.sort_values(by=f"Total {amount_col}", ascending=False)
 
                     # 6. Reorder columns
-                    cols_order = ['name'] + columns_to_extract + ['CIN', 'Tel', 'Remarque', f"Total {amount_col}"]
+                    # Added person_id_col explicitly after name
+                    cols_order = ['name', person_id_col] + columns_to_extract + ['CIN', 'Tel', 'Remarque', f"Total {amount_col}"]
                     cols_order = list(dict.fromkeys(cols_order)) # Remove dupes
                     final_df = final_df[cols_order]
 
