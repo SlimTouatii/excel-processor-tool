@@ -5,6 +5,26 @@ import io
 # --- App Configuration ---
 st.set_page_config(page_title="Excel Table Processor", layout="wide")
 
+# --- LOGIN SYSTEM ---
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+
+if not st.session_state.logged_in:
+    st.title("🔒 Login Required")
+    with st.form("login_form"):
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        submit_button = st.form_submit_button("Login")
+        
+        if submit_button:
+            if username == "ahmed" and password == "touati":
+                st.session_state.logged_in = True
+                st.rerun()
+            else:
+                st.error("Incorrect username or password.")
+    st.stop()  # Stop execution if not logged in
+
+# --- MAIN APP ---
 st.title("📊 Excel Table Processor")
 
 # --- Step 1: Report Mode Selection ---
@@ -108,9 +128,6 @@ if uploaded_file is not None:
                         writer.sheets['Report'] = worksheet
                         
                         # Define Formats
-                        # border: 1 adds the border
-                        # text_wrap: True keeps text inside the cell (no spill)
-                        # valign: top makes it look better if rows have different heights
                         cell_fmt = workbook.add_format({
                             'border': 1, 
                             'text_wrap': True,
@@ -129,11 +146,8 @@ if uploaded_file is not None:
                         df_table_1.to_excel(writer, sheet_name='Report', startrow=0, startcol=0, index=False)
                         
                         # Apply formatting to Table 1 Columns
-                        # set_column(first_col, last_col, width, cell_format)
                         for i, col in enumerate(df_table_1.columns):
-                            # Set column width to 20 and apply border/wrap format
                             worksheet.set_column(i, i, 20, cell_fmt)
-                            # Write Header manually to apply header format
                             worksheet.write(0, i, col, header_fmt)
 
                         # Write Table 2
@@ -152,9 +166,21 @@ if uploaded_file is not None:
                 else:
                     file_suffix = "cnss"
 
-                    df_cnss = clean_df.groupby(person_id_col)[amount_col].sum().reset_index()
+                    # 1. Group by Person ID to make it unique
+                    # FILTER: Exclude negative values before summing
+                    clean_df_positive = clean_df[clean_df[amount_col] >= 0]
+                    
+                    # Group using ONLY the positive data
+                    df_cnss = clean_df_positive.groupby(person_id_col)[amount_col].sum().reset_index()
+                    
+                    # Get text info from the ORIGINAL dataframe (to keep people even if they had 0 or negative totals)
                     df_text_info = df.drop_duplicates(subset=[person_id_col])[columns_to_extract + [person_id_col]]
+                    
+                    # Merge them
                     final_df = pd.merge(df_text_info, df_cnss, on=person_id_col, how='left')
+
+                    # Fill NaNs with 0 (for people who had no positive rows)
+                    final_df[amount_col] = final_df[amount_col].fillna(0)
 
                     final_df.insert(0, 'name', user_name)
                     final_df['CIN'] = ""
